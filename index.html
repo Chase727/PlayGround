@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <meta name="theme-color" content="#05070f" />
+  <meta name="description" content="Neon Drift — an isometric drift racing game. Slide the neon circuit, chain drifts, and bank nitro for the fastest lap." />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23060b17'/%3E%3Cpath d='M12 40l10-16h9l-7 12h12l-4 8H20z' fill='%235ef4ff'/%3E%3Cpath d='M34 24h18l-5 8H33z' fill='%23ff4fd8'/%3E%3C/svg%3E" />
+  <title>Neon Drift — Isometric Drift Racer</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <main id="app" data-state="menu">
+    <canvas id="game" aria-label="Isometric drift racing game"></canvas>
+    <div class="sky-glow" aria-hidden="true"></div>
+    <div class="vignette" aria-hidden="true"></div>
+    <div class="scanlines" aria-hidden="true"></div>
+    <div id="flash" aria-hidden="true"></div>
+
+    <header class="hud hud-top" aria-label="Race status">
+      <div class="hud-cluster lapbox">
+        <span class="label">LAP</span>
+        <div class="big"><b id="lap">1</b><i>/ 3</i></div>
+      </div>
+      <div class="hud-cluster timebox">
+        <span class="label">RACE TIME</span>
+        <div class="big mono" id="time">00:00.000</div>
+      </div>
+      <div class="hud-cluster gatebox">
+        <span class="label">NEXT GATE</span>
+        <div class="gate-meter"><i id="gateFill"></i></div>
+        <div class="gate-count" id="gateCount">01 / 08</div>
+      </div>
+      <div class="hud-cluster posbox">
+        <span class="label">POS</span>
+        <div class="big"><b id="pos">4</b><i>/ 4</i></div>
+      </div>
+      <div class="hud-cluster scorebox">
+        <span class="label">DRIFT SCORE</span>
+        <div class="big mono" id="score">0</div>
+        <div class="combo" id="combo">x1.0</div>
+      </div>
+    </header>
+
+    <div class="tools">
+      <button class="icon-btn" id="pauseBtn" aria-label="Pause race" title="Pause (Esc)">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14M16 5v14" /></svg>
+      </button>
+      <button class="icon-btn" id="muteBtn" aria-label="Mute sound" title="Mute (M)">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 9v6h4l5 4V5L9 9H5z" /><path class="wave" d="M17 8.5a5 5 0 0 1 0 7M19.5 6a8.5 8.5 0 0 1 0 12" /></svg>
+      </button>
+    </div>
+
+    <footer class="hud hud-bottom" aria-label="Speed and nitro">
+      <div class="speedbox">
+        <div class="speed-row">
+          <div class="speed-read"><b id="speed">0</b><span>KM/H</span></div>
+          <div class="gear" id="gear">N</div>
+        </div>
+        <div class="revbar"><i id="revFill"></i></div>
+        <div class="speed-hint" id="speedHint">HOLD THROTTLE</div>
+      </div>
+
+      <div class="driftbox">
+        <div class="drift-label" id="driftLabel">READY TO SLIDE</div>
+        <div class="drift-bar"><i id="nitroFill"></i><span class="drift-ticks"></span></div>
+        <div class="drift-hint"><span>NITRO</span><span id="nitroPct">0%</span></div>
+      </div>
+
+      <div class="mapbox">
+        <canvas id="minimap" width="180" height="150" aria-label="Circuit map"></canvas>
+        <span class="map-label">NEON CIRCUIT</span>
+      </div>
+    </footer>
+
+    <div class="touch-controls" id="touchControls" aria-label="Touch driving controls">
+      <div class="touch-steer">
+        <button class="touch-btn steer" data-control="left" aria-label="Steer left">◀</button>
+        <button class="touch-btn steer" data-control="right" aria-label="Steer right">▶</button>
+      </div>
+      <div class="touch-pedals">
+        <button class="touch-btn small" data-control="boost" aria-label="Use nitro">N2O</button>
+        <button class="touch-btn small" data-control="brake" aria-label="Brake">BRK</button>
+        <button class="touch-btn small drift" data-control="drift" aria-label="Handbrake drift">DRIFT</button>
+        <button class="touch-btn gas" data-control="gas" aria-label="Accelerate">GAS</button>
+      </div>
+    </div>
+
+    <div id="countdown" class="countdown" aria-live="polite"><span></span><small>SLIDE!</small></div>
+    <div id="popups" class="popups" aria-hidden="true"></div>
+    <div id="toast" class="toast" aria-live="polite"></div>
+
+    <section class="overlay menu" id="menu" aria-label="Main menu">
+      <div class="menu-card">
+        <div class="eyebrow"><span></span>ISOMETRIC DRIFT RACING<span></span></div>
+        <h1 class="logo">NEON<br /><em>DRIFT</em></h1>
+        <p class="tagline">Three laps. Eight gates. One long neon slide.</p>
+
+        <button class="primary" id="startBtn" aria-label="Start game">
+          <span>Start Race</span>
+          <kbd>↵</kbd>
+        </button>
+
+        <div class="menu-controls">
+          <div><span class="keys"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></span><span>Drive &amp; steer</span></div>
+          <div><span class="keys"><kbd>SPACE</kbd></span><span>Handbrake drift</span></div>
+          <div><span class="keys"><kbd>SHIFT</kbd></span><span>Burn nitro</span></div>
+          <div><span class="keys"><kbd>ESC</kbd></span><span>Pause</span></div>
+        </div>
+
+        <div class="menu-footer">
+          <div><span>BEST LAP</span><b id="bestLap">--:--.---</b></div>
+          <div><span>BEST DRIFT</span><b id="bestScore">0</b></div>
+          <div class="tip">Tip: hold <b>SPACE</b> into a corner, then steer out and feather the throttle.</div>
+        </div>
+      </div>
+      <div class="menu-side">
+        <div class="side-chip"><b>01</b><span>Drift to charge nitro</span></div>
+        <div class="side-chip"><b>02</b><span>Hit every gate</span></div>
+        <div class="side-chip"><b>03</b><span>Chase the clean line</span></div>
+      </div>
+    </section>
+
+    <section class="overlay pause" id="pause" aria-label="Paused">
+      <div class="panel">
+        <div class="eyebrow"><span></span>ENGINE IDLE<span></span></div>
+        <h2>PAUSED</h2>
+        <p class="panel-sub">The circuit waits. Take a breath.</p>
+        <div class="button-stack">
+          <button class="primary" id="resumeBtn">Resume</button>
+          <button class="secondary" id="restartBtn">Restart Race</button>
+          <button class="ghost" id="quitBtn">Quit to Menu</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="overlay results" id="results" aria-label="Race results">
+      <div class="panel result-panel">
+        <div class="eyebrow"><span></span>RACE COMPLETE<span></span></div>
+        <h2 id="resultTitle">P1</h2>
+        <p class="panel-sub" id="resultFlavor">A clean line through the neon.</p>
+        <div class="result-grid">
+          <div><span>TOTAL TIME</span><b id="resultTime">00:00.000</b></div>
+          <div><span>BEST LAP</span><b id="resultLap">00:00.000</b></div>
+          <div><span>DRIFT SCORE</span><b id="resultScore">0</b></div>
+          <div><span>TOP SPEED</span><b id="resultSpeed">0</b></div>
+        </div>
+        <div class="new-best" id="newBest">NEW PERSONAL BEST</div>
+        <div class="button-row">
+          <button class="primary" id="againBtn">Race Again</button>
+          <button class="ghost" id="menuBtn">Menu</button>
+        </div>
+      </div>
+    </section>
+
+    <div class="hint-menu" id="hintMenu" aria-hidden="true">
+      <span>WASD / ARROWS</span><span>SPACE — DRIFT</span><span>SHIFT — NITRO</span>
+    </div>
+  </main>
+
+  <script type="module" src="./js/main.js"></script>
+</body>
+</html>
